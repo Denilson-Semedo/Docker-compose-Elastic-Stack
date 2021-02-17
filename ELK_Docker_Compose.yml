@@ -17,6 +17,8 @@ services:
       - /mnt/logs/elastic/dados: /usr/share/elasticsearch/data
     ports:
       - 9200:9200
+    healthcheck:
+      test: ["CMD", "curl","-s" ,"-f", "http://elasticsearch:9200/_cat/health"]
     networks:
       - elastic
 
@@ -28,8 +30,38 @@ services:
     environment:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    restart: on-failure
+    depends_on:
+      elasticsearch:  { condition: service_healthy }
     networks:
       - elastic
+  
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:latest
+    container_name: metricbeat
+    hostname: metricbeat
+    logging:
+      options:
+        max-file: "3"
+        max-size: "50m"
+    volumes:
+      #Mount the metricbeat configuration so users can make edits.
+      - ./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      #Mount the modules.d directory into the container. This allows user to potentially make changes to the modules and they will be dynamically loaded.
+      - ./modules.d/:/usr/share/metricbeat/modules.d/
+      #The commented sections below enable Metricbeat to monitor the Docker host rather than the Metricbeat container. These are used by the system module.
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      #Allows us to report on docker from the hosts information.
+      - /var/run/docker.sock:/var/run/docker.sock
+      #We mount the host filesystem so we can report on disk usage with the system module.
+      - /:/hostfs:ro
+    command: metricbeat -e -system.hostfs=/hostfs -strict.perms=false
+    networks:
+      - elastic
+    restart: on-failure
+    depends_on:
+      elasticsearch:  { condition: service_healthy }
 
 networks:
   elastic:
