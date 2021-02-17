@@ -14,7 +14,7 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - /mnt/logs/elastic/dados: /usr/share/elasticsearch/data
+      - ./mnt/logs/elastic/dados:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
     healthcheck:
