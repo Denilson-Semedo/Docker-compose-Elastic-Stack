@@ -1,5 +1,6 @@
 version: '2.2'
 services:
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
     container_name: elasticsearch
@@ -14,7 +15,7 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - ./mnt/logs/elastic/dados:/usr/share/elasticsearch/data
+      - /usr/share/elasticsearch/data
     ports:
       - 9200:9200
     healthcheck:
@@ -35,9 +36,9 @@ services:
       elasticsearch:  { condition: service_healthy }
     networks:
       - elastic
-  
+
   metricbeat:
-    image: docker.elastic.co/beats/metricbeat:latest
+    image: docker.elastic.co/beats/metricbeat:7.11.0
     container_name: metricbeat
     hostname: metricbeat
     logging:
@@ -45,10 +46,6 @@ services:
         max-file: "3"
         max-size: "50m"
     volumes:
-      #Mount the metricbeat configuration so users can make edits.
-      - ./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
-      #Mount the modules.d directory into the container. This allows user to potentially make changes to the modules and they will be dynamically loaded.
-      - ./modules.d/:/usr/share/metricbeat/modules.d/
       #The commented sections below enable Metricbeat to monitor the Docker host rather than the Metricbeat container. These are used by the system module.
       - /proc:/hostfs/proc:ro
       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
@@ -57,11 +54,38 @@ services:
       #We mount the host filesystem so we can report on disk usage with the system module.
       - /:/hostfs:ro
     command: metricbeat -e -system.hostfs=/hostfs -strict.perms=false
+    environment:
+      - "WAIT_FOR_HOSTS=elasticsearch:9200 kibana:5601"
+      - "HOST_ELASTICSEARCH=elasticsearch:9200"
+      - "HOST_KIBANA=kibana:5601"
     networks:
       - elastic
     restart: on-failure
     depends_on:
       elasticsearch:  { condition: service_healthy }
+    
+  metricbeat-container:
+      image: docker.elastic.co/beats/metricbeat:7.11.0
+      container_name: metricbeat-container
+      hostname: metricbeat
+      logging:
+        options:
+          max-file: "3"
+          max-size: "50m"
+      volumes:
+      #Mount the metricbeat configuration so users can make edits.
+      - ./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      #Mount the modules.d directory into the container. This allows user to potentially make changes to the modules and they will be dynamically loaded.
+      - ./modules.d/:/usr/share/metricbeat/modules.d/
+      command: -e
+      environment:
+        - "WAIT_FOR_HOSTS=elasticsearch:9200 kibana:5601"
+        - "HOST_ELASTICSEARCH=elasticsearch:9200"
+        - "HOST_KIBANA=kibana:5601"
+      depends_on:
+        - elasticsearch
+      networks:
+        - elastic
 
 networks:
   elastic:
