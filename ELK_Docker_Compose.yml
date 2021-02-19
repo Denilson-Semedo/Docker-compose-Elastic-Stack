@@ -77,29 +77,6 @@ services:
     restart: on-failure
     depends_on:
       elasticsearch:  { condition: service_healthy }
-    
-  metricbeat-container:
-      image: docker.elastic.co/beats/metricbeat:7.11.0
-      container_name: metricbeat-container
-      hostname: metricbeat
-      logging:
-        options:
-          max-file: "3"
-          max-size: "50m"
-      volumes:
-      #Mount the metricbeat configuration so users can make edits.
-      - ./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
-      #Mount the modules.d directory into the container. This allows user to potentially make changes to the modules and they will be dynamically loaded.
-      - ./modules.d/:/usr/share/metricbeat/modules.d/
-      command: -e
-      environment:
-        - "WAIT_FOR_HOSTS=elasticsearch:9200 kibana:5601"
-        - "HOST_ELASTICSEARCH=elasticsearch:9200"
-        - "HOST_KIBANA=kibana:5601"
-      depends_on:
-        - elasticsearch
-      networks:
-        - elastic
 
 networks:
   elastic:
